@@ -378,15 +378,18 @@ class Spectrum:
         plt.pcolormesh(X, Y, Z, **default_kwargs)
         plt.xlabel(r"$k_\parallel$ ($1/\AA$)" if k_space else 'Angle (degree)')
 
-    def mdc_cor_plot(self, fl=0, v_min=5, v_max=99.5, k_space=False, theta_origin=0, slit_rescale=1/1.1, **kwargs):
+    def mdc_cor_plot(self, fl=0, v_min=5, v_max=99.5, k_space=False,k_origin=0, theta_origin=0, slit_rescale=1/1.1, **kwargs):
         X = self.lens_scale * slit_rescale - theta_origin
         Y = self.energy_scale
         X, Y = np.meshgrid(X, Y)
         MDCs = np.sum(self.normdata, axis=0)
         Z = self.normdata / (MDCs + 1)
+        
+        if k_origin!=0 and theta_origin!=0:
+            print("k_origin and theta_origin at the same time!")
     
         if k_space:
-            X = self.arpes_to_k(X, Y)
+            X = self.arpes_to_k(X, Y)-k_origin
 
         default_kwargs = {
             'cmap': 'turbo',
@@ -747,7 +750,7 @@ class MapSpectrum:
         plt.ylabel(ylabel)
 
     def deflector_mapping_mdc_cor_plot(self, Ek, ra=0.2, fl=0,
-                                       s_mapl=5, s_mapd=5,k_space=True, k_origin=0, slit_rescale=1/1.1,
+                                       s_mapl=5, s_mapd=5,k_space=False, theta_origin=0,k_origin=0, slit_rescale=1/1.1,
                                        v_min=5, v_max=99.5, **kwargs):
         data_array = []
         for spec in self.specs:
@@ -758,10 +761,11 @@ class MapSpectrum:
         Ei = self.specs[0].e_to_i(Ek - ra)
         Ef = self.specs[0].e_to_i(Ek + ra) + 1
     
-        X = self.lens_scale * slit_rescale
+        X = self.lens_scale * slit_rescale - theta_origin
         Y = self.deflector_scale
         X, Y = np.meshgrid(X, Y)
-
+        if k_origin!=0 and theta_origin!=0:
+            print("k_origin and theta_origin at the same time!")
         if k_space:
             X_plot = 0.5124 * np.sqrt(Ek) * np.sin(np.radians(X)) - k_origin
             Y_plot = 0.5124 * np.sqrt(Ek) * np.sin(np.radians(Y))
@@ -852,7 +856,7 @@ class MapSpectrum:
 
     def energy_mapping_plot(self, start_E, end_E, ra=0.1,WF=4.5,
                             E_cut=0,lower_bound=0,higher_bound=-1, 
-                            k_space=True, k_origin=0, slit_rescale=1/1.1, V_0=5, photon_angle=30, 
+                            k_space=True, theta_origin=0,k_origin=0, slit_rescale=1/1.1, V_0=5, photon_angle=30, 
                             v_min=5, v_max=99.5, **kwargs): #kz map using fixed WF to determine EF=hv-WF
         scans = len(self.specs) #number of loaded Spectrum
         data_array = [spec.data for spec in self.specs] #[[E x theta array 1],[E x theta array 2],...] where each spec.data is a @D matrix of intensity at each (Ek, theta)
@@ -871,12 +875,13 @@ class MapSpectrum:
         energies_profile = np.sum(Z_array, axis=1) # sum along theta (after fixing the burnt theta pixels)
         Z_array = (Z_array.T * gaussian_filter(energies_profile, 5)/ (energies_profile + 1)).T # fix intensity difference across energies
 
-        X = self.lens_scale * slit_rescale #[theta1*scaling, theta2*scaling,..]_hv1, [theta1*scaling, theta2*scaling,..]_hv2
+        X = self.lens_scale * slit_rescale-theta_origin #[theta1*scaling, theta2*scaling,..]_hv1, [theta1*scaling, theta2*scaling,..]_hv2
         X, hv = np.meshgrid(X, hv) #[[theta1,hv1],[theta2,hv1],,...]
                                    #[[theta1,hv2],[theta2,hv2],,...]
         X = X[:, lower_bound:higher_bound] #restricted X for specific theta range [theta1,theta2,...],[theta1,theta2,...],...
         hv = hv[:, lower_bound:higher_bound] #restricted hv for specific theta range [hv1,hv1,hv1,...],[hv2,hv2,...],...
-    
+        if k_origin!=0 and theta_origin!=0:
+            print("k_origin and theta_origin at the same time!")
         if k_space:
             kx = np.array([[0.5124 * np.sqrt(hv[i][j] - E_cut - WF) * np.sin(np.deg2rad(X[i][j]))
                             for j in range(X.shape[1])] for i in range(X.shape[0])]) #X.shape[0]= number of row in X= each hv , X.shape[1]= number of column in X= each theta 
@@ -888,7 +893,7 @@ class MapSpectrum:
             ylabel = r"$k_\perp$ ($1/\AA$)"
             default_kwargs = {'shading': 'gouraud'}
         else:
-            X_plot, Y_plot = X - k_origin, hv
+            X_plot, Y_plot = X , hv
             xlabel = "Angle (degree)"
             ylabel = "Photon Energy (eV)"
             default_kwargs = {}
@@ -905,11 +910,13 @@ class MapSpectrum:
         plt.xlabel(xlabel)
         plt.ylabel(ylabel)
 
-    def plot_energy_line(self, energy, E_cut=0, k_origin = 0, slit_rescale=1/1.1,
+    def plot_energy_line(self, energy, E_cut=0, theta_origin=0,k_origin = 0, slit_rescale=1/1.1,
                          WF=4.5, V_0=5,photon_angle = 30,
                          lower_bound = 0, higher_bound = -1,
                          c='r', lw=1, alpha=0.5):
-        X = self.lens_scale * slit_rescale
+        X = self.lens_scale * slit_rescale-theta_origin
+        if k_origin!=0 and theta_origin!=0:
+            print("k_origin and theta_origin at the same time!")
         kx_1 = [(0.5124*np.sqrt(energy-E_cut-WF)*np.sin(np.deg2rad(X[j]))) for j in range(lower_bound,len(X)+higher_bound)]
         kz_1 = [(0.5124*np.sqrt((energy-E_cut-WF)*np.cos(np.deg2rad(X[j]))**2+V_0) + np.sin(np.deg2rad(photon_angle))*energy*5.067*10**-4) for j in range(lower_bound,len(X)+higher_bound)]
         kx_1 = np.array(kx_1)
@@ -919,12 +926,12 @@ class MapSpectrum:
                             find_E1=2, find_E2=2.8,
                             s_spec=15, s_mapv=5, s_maph=5,
                             lower_bound=0, higher_bound=-1,
-                            k_space=True, k_origin=0, slit_rescale=1/1.1, V_0=5, photon_angle=30,
+                            k_space=False, theta_origin=0, k_origin=0, slit_rescale=1/1.1, V_0=5, photon_angle=30,
                             v_min=5, v_max=99.5, **kwargs):
         scans = len(self.specs)
         data_array = []
         fls, Eis, Efs = [], [], []
-    
+        
         for i in range(scans):
             MDCs = np.average(self.specs[i].normdata, axis=0)
             data_array.append(self.specs[i].normdata * gaussian_filter(MDCs, s_spec) / (MDCs + 1))
@@ -940,9 +947,10 @@ class MapSpectrum:
         energies_profile = np.sum(Z_array, axis=1)
         Z_array = (Z_array.T * gaussian_filter(energies_profile, s_maph) / (energies_profile + 1)).T
     
-        X = self.lens_scale * slit_rescale
+        X = (self.lens_scale * slit_rescale)-theta_origin
         X, hv = np.meshgrid(X, hv)
-    
+        if k_origin!=0 and theta_origin!=0:
+            print("k_origin and theta_origin at the same time!")
         if k_space:
             kx = np.array([[0.5124 * np.sqrt(fls[i] - E_cut) * np.sin(np.deg2rad(X[i][j]))
                             for j in range(len(X[i]))] for i in range(len(X))])
@@ -971,7 +979,71 @@ class MapSpectrum:
         plt.pcolormesh(X_plot, Y_plot, Z_array, **default_kwargs)
         plt.xlabel(xlabel)
         plt.ylabel(ylabel)
-
+        
+    def energy_mapping_cor_plot_brute(self, start_E, end_E, ra=0.1, E_cut=0,find_E1=2, find_E2=2.8,Ef=[],
+                        s_spec=15, s_mapv=5, s_maph=5, lower_bound=0, higher_bound=-1,k_space=False, 
+                        theta_origin=0, k_origin=0, slit_rescale=1/1.1, V_0=5, photon_angle=30,v_min=5, v_max=99.5, **kwargs):
+        scans = len(self.specs)
+        data_array = []
+        fls, Eis, Efs = [], [], []
+        
+        if Ef==[]:
+            for i in range(scans):
+                MDCs = np.average(self.specs[i].normdata, axis=0)
+                data_array.append(self.specs[i].normdata * gaussian_filter(MDCs, s_spec) / (MDCs + 1))
+                fl = self.specs[i].find_fl(find_E1, find_E2)
+                fls.append(fl)
+                Eis.append(self.specs[i].e_to_i(fl - E_cut - ra))
+                Efs.append(self.specs[i].e_to_i(fl - E_cut + ra) + 1)
+        elif Ef!=[] and len(Ef)==len(self.specs):    
+            for i in range(scans):
+                MDCs = np.average(self.specs[i].normdata, axis=0)
+                data_array.append(self.specs[i].normdata * gaussian_filter(MDCs, s_spec) / (MDCs + 1))
+                fls.append(Ef[i])
+                Eis.append(self.specs[i].e_to_i(Ef[i] - E_cut - ra))
+                Efs.append(self.specs[i].e_to_i(Ef[i] - E_cut + ra) + 1)   
+        else:
+            print("Ef not complete")
+        data_array = np.array(data_array)
+        hv = np.linspace(start_E, end_E, scans)
+        Z_array = np.array([np.sum(data_array[i][Eis[i]:Efs[i], :], axis=0) for i in range(scans)])
+        lens_profile = np.sum(Z_array, axis=0)
+        Z_array = Z_array * gaussian_filter(lens_profile, s_mapv) / (lens_profile + 1)
+        energies_profile = np.sum(Z_array, axis=1)
+        Z_array = (Z_array.T * gaussian_filter(energies_profile, s_maph) / (energies_profile + 1)).T
+    
+        X = (self.lens_scale * slit_rescale)-theta_origin
+        X, hv = np.meshgrid(X, hv)
+        if k_origin!=0 and theta_origin!=0:
+            print("k_origin and theta_origin at the same time!")
+        if k_space:
+            kx = np.array([[0.5124 * np.sqrt(fls[i] - E_cut) * np.sin(np.deg2rad(X[i][j]))
+                            for j in range(len(X[i]))] for i in range(len(X))])
+            kz = np.array([[0.5124 * np.sqrt((fls[i] - E_cut) * np.cos(np.deg2rad(X[i][j]))**2 + V_0)
+                            + np.sin(np.deg2rad(photon_angle)) * hv[i][j] * 5.067e-4
+                            for j in range(len(X[i]))] for i in range(len(X))])
+            X_plot, Y_plot = kx - k_origin, kz
+            xlabel = r"$k_\parallel$ ($1/\AA$)"
+            ylabel = r"$k_\perp$ ($1/\AA$)"
+            default_kwargs = {'shading': 'gouraud'}
+            plt.gca().set_aspect('equal')
+        else:
+            X_plot, Y_plot =X - k_origin, hv
+            xlabel = "Angle (degree)"
+            ylabel = "Photon Energy (eV)"
+            default_kwargs = {}
+            plt.gca().set_aspect('auto')
+        self.center_e = np.abs(X_plot[0]).argmin()
+        default_kwargs.update({
+            'cmap': 'viridis',
+            'vmin': np.percentile(Z_array, v_min),
+            'vmax': np.percentile(Z_array, v_max)
+        })
+        default_kwargs.update(kwargs)
+    
+        plt.pcolormesh(X_plot, Y_plot, Z_array, **default_kwargs)
+        plt.xlabel(xlabel)
+        plt.ylabel(ylabel)
     def kz_arpes_plot_k(self, start_E, end_E, k_origin = 0, find_E1=2, find_E2=2.8, E_cut=0,photon_angle = 30, V_0=5, s_spec = 15, s_mapv = 5, s_maph = 5,lower_bound=0, higher_bound = -1, v_min=5, v_max=99.5, **kwargs):
         scans = len(self.specs)
         data_array = []
