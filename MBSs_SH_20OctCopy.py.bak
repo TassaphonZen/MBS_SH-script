@@ -1,4 +1,4 @@
-#version 2025.10.20 15:11
+#version 2026.03.30
 
 import csv
 import os
@@ -323,8 +323,8 @@ class Spectrum:
             plt.plot(x, (self.edc - np.min(self.edc)) * scaling, **default_kwargs)
         plt.ylabel('Intensity (a.u.)')
         
-    def rawdata_plot(self, fl=0, sigma=0, v_min=5, v_max=99.5, k_space=True, k_origin=0, slit_rescale=1/1.1, **kwargs):
-        X = self.lens_scale * slit_rescale
+    def rawdata_plot(self, fl=0, sigma=0, v_min=5, v_max=99.5, k_space=True, k_origin=0, theta_origin=0,slit_rescale=1/1.1, **kwargs):
+        X = (self.lens_scale * slit_rescale)-theta_origin
         Y = self.energy_scale
         X, Y = np.meshgrid(X, Y)
         Z = self.normdata
